@@ -26,9 +26,6 @@ jobs:
         package:
           - frb_example--flutter_via_create
           - frb_example--flutter_via_integrate
-        exclude:
-          - { image: windows-2019, package: frb_example--deliberate_bad }
-          - { image: windows-2019, package: frb_example--flutter_via_integrate }
 
     steps:
       # setup
