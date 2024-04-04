@@ -1,0 +1,63 @@
+name: diff
+
+on:
+  push:
+    branches:
+      - action
+  pull_request: { }
+  workflow_dispatch: { }
+
+env:
+  CARGO_TERM_COLOR: always
+  FRB_MAIN_RUST_VERSION: 1.74.0
+  FRB_MAIN_DART_VERSION: 3.3.0
+  FRB_MAIN_FLUTTER_VERSION: 3.19.2
+
+jobs:
+  generate_run_frb_codegen_command_generate_diff:
+    name: 'Generate :: FRB Codegen :: Command Generate :: Diff'
+    runs-on: ${{ matrix.image }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - windows-2019
+        package:
+          - frb_example--flutter_via_create
+          - frb_example--flutter_via_integrate
+        exclude:
+          - { image: windows-2019, package: frb_example--deliberate_bad }
+          - { image: windows-2019, package: frb_example--flutter_via_integrate }
+
+    steps:
+      # setup
+      - uses: catchpoint/workflow-telemetry-action@v1
+        with:
+          comment_on_pr: false
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.FRB_MAIN_RUST_VERSION }}
+          components: rustfmt, clippy
+      - uses: subosito/flutter-action@v2
+        with:
+          cache: true
+          flutter-version: ${{ env.FRB_MAIN_FLUTTER_VERSION }}
+          architecture: x64
+      - uses: taiki-e/install-action@cargo-llvm-cov
+
+      # execute
+      - run: ./frb_internal generate-run-frb-codegen-command-generate --package ${{ matrix.package }}
+
+      - run: git commit -m diff
+
+      - run: git diff > changes.patch
+      
+      # upload diff
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.job }}--${{ matrix.image }}--${{ matrix.package }}--diff
+          path: changes.patch
